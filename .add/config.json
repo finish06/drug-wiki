@@ -1,0 +1,10 @@
+{
+  "version": "0.11.0",
+  "project": { "name": "drug-wiki", "description": "Public developer wiki for the drug-data API stack (drug-gate)" },
+  "maturity": { "level": "alpha" },
+  "architecture": { "languages": [{ "name": "markdown" }, { "name": "python" }], "backend": { "framework": "mkdocs" }, "frontend": { "framework": null } },
+  "quality": { "mode": "standard", "coverage_threshold": null, "type_check_blocking": false, "e2e_required": false },
+  "test": { "framework": "pytest", "command": "pytest -q && mkdocs build --strict" },
+  "environments": { "tier": 2, "local": { "run": "mkdocs serve", "url": "http://127.0.0.1:8000" }, "production": { "url": "https://wiki.drugs.calebdunn.tech", "autoPromote": false, "requireApproval": true } },
+  "collaboration": { "autonomy_level": "autonomous" }
+}
