@@ -1,0 +1,28 @@
+name: PR -> staging gate
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  mr-staging:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: http://gitea-http.gitea.svc.cluster.local:3000/Code/ci-shared/mr-staging@v3
+        with:
+          image-name: finish06/drug-wiki
+          qa-enabled: "true"
+          # The Docker build runs pytest + `mkdocs build --strict`; run them
+          # here too so a broken page fails the gate with a readable log.
+          test-cmd: |
+            set -euo pipefail
+            # The runner Python is externally managed (PEP 668): use a venv.
+            python3 -m venv .venv
+            .venv/bin/pip install --quiet -r requirements.txt
+            .venv/bin/python -m pytest -q
+          deploy-cmd: |
+            echo "No staging for drug-wiki: the operator deploys :<sha> to prod on Caleb's go."
+        env:
+          REGISTRY_USERNAME:  ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD:  ${{ secrets.REGISTRY_PASSWORD }}
+          NATS_PUBLISH_URL:   ${{ secrets.NATS_PUBLISH_URL }}
+          NATS_PUBLISH_TOKEN: ${{ secrets.NATS_PUBLISH_TOKEN }}

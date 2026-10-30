@@ -3,7 +3,7 @@
 **Version:** 0.1.0
 **Created:** 2026-10-30
 **PRD Reference:** docs/prd.md
-**Status:** Draft
+**Status:** In Progress
 
 ## 1. Overview
 
@@ -46,21 +46,21 @@ No UI interactions beyond reading; screenshot checkpoints are the rendered pages
 **Steps:** Read Start here → API keys → Quickstart; run the curl example with a key.
 **Expected Result:** 200 with drug data; the page told them which guide to read next.
 **Screenshot Checkpoint:** Start here, Quickstart.
-**Maps to:** TBD
+**Maps to:** tests/test_wiki.py → AC-001/002/003 tests + manual read-through
 
 ### TC-002: Find the endpoint for a task
 **Precondition:** Developer has a key and a drug's NDC from a bottle.
 **Steps:** From Start here's "I want to…" table, open "Look up a drug by NDC".
 **Expected Result:** Request, example response, parameters and errors on one page.
 **Screenshot Checkpoint:** the guide.
-**Maps to:** TBD
+**Maps to:** tests/test_wiki.py → "test_ac005_guides_follow_the_template[guides/ndc-lookup.md]"
 
 ### TC-003: Catalog completeness
 **Precondition:** Vendored drug-gate OpenAPI.
 **Steps:** Run the test suite.
 **Expected Result:** Every `/v1` path is in the catalog with a guide link.
 **Screenshot Checkpoint:** N/A
-**Maps to:** TBD
+**Maps to:** tests/test_wiki.py → "test_ac004_catalog_lists_every_v1_path_with_a_guide_link"
 
 ### TC-004: Live site
 **Precondition:** Image deployed by the operator.
@@ -115,3 +115,4 @@ Help), search, copy buttons on code blocks.
 | Date | Version | Author | Changes |
 |------|---------|--------|---------|
 | 2026-10-30 | 0.1.0 | calebdunn | Initial spec from the /goal request and the 3-question interview |
+| 2026-10-30 | 0.1.0 | calebdunn | Code complete (cycle-1): 19 tests RED → GREEN; strict build; image runs non-root on :8080 with /healthz. Hosting pending operator + Caleb's go |

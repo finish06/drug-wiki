@@ -1,0 +1,19 @@
+name: main -> staging release
+on:
+  push:
+    branches: [main]
+
+jobs:
+  staging-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: http://gitea-http.gitea.svc.cluster.local:3000/Code/ci-shared/staging-release@v3
+        with:
+          image-name: finish06/drug-wiki
+          deploy-cmd: |
+            # Publishes :<sha>-beta and :<sha>. The operator pins prod
+            # (wiki.drugs.calebdunn.tech) to the digest on Caleb's go.
+            echo "Pushed image: ${IMAGE_REF}"
+        env:
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
