@@ -2,7 +2,11 @@
 title: Start here
 ---
 
-# Drug API Wiki
+<div align="center" markdown>
+![](assets/images/logo.svg){ width="320" }
+</div>
+
+# Drug API Wiki { .md-visually-hidden }
 
 **drug-gate** is a REST API for drug information. One API key gives you US drug
 names, NDC codes, drug classes, FDA product labels, interaction checks and
