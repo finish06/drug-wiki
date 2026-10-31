@@ -337,6 +337,8 @@ def test_deploy_ac005_smoke_check_and_tag_confirmation():
     # Operator conditions (2026-10-30): pin by digest; prove every pod runs it.
     assert "docker-content-digest" in cmd and '@${DIGEST}"' in cmd
     assert "imageID" in cmd and "$DIGEST" in cmd
+    # Terminating pods (preStop sleep) still report Running with the old image (run 6266).
+    assert "deletionTimestamp" in cmd
 
 
 def test_deploy_ac006_fail_fast_without_secret():

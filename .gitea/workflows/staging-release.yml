@@ -65,7 +65,9 @@ jobs:
             RUNNING=$(kubectl -n drugs get deploy/drug-wiki -o jsonpath="{.spec.template.spec.containers[0].image}")
             echo "Deployment image: ${RUNNING}"
             case "$RUNNING" in *"$IMAGE_TAG@$DIGEST") ;; *) echo "::error::Deployment runs ${RUNNING}, expected $IMAGE_TAG@$DIGEST"; exit 1 ;; esac
-            IDS=$(kubectl -n drugs get pods -l app.kubernetes.io/name=drug-wiki --field-selector=status.phase=Running -o jsonpath="{range .items[*]}{.status.containerStatuses[0].imageID}{\"\\n\"}{end}")
+            # Skip pods that are shutting down (deletionTimestamp set): during the preStop
+            # sleep they still report phase Running with the OLD image.
+            IDS=$(kubectl -n drugs get pods -l app.kubernetes.io/name=drug-wiki -o go-template="{{range .items}}{{if and (not .metadata.deletionTimestamp) (eq .status.phase \"Running\")}}{{(index .status.containerStatuses 0).imageID}}{{\"\\n\"}}{{end}}{{end}}")
             echo "Pod image IDs:"; echo "$IDS"
             if [ -z "$IDS" ] || echo "$IDS" | grep -v -q "$DIGEST"; then
               echo "::error::Not every running pod has ${DIGEST}"; exit 1

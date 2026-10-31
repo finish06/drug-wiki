@@ -95,3 +95,4 @@ updates don't wait on a manual roll.
 | 2026-10-30 | 0.1.0 | calebdunn | Initial spec from Caleb's request |
 | 2026-10-30 | 0.1.0 | calebdunn | Operator review (comment 14983): kubectl v1.34.13, diff rc>1 fails, digest in committed pin, APISERVER note, revert-after-undo |
 | 2026-10-30 | 0.1.0 | calebdunn | Code complete: 6 RED → 37 GREEN; operator conditions folded in (digest pin, pod imageID check, list on deployments/replicasets). PR held as WIP until RBAC + secret + homelab drop are scheduled together |
+| 2026-10-31 | 0.1.0 | calebdunn | Cutover done (operator, Caleb's go): RBAC + WIKI_KUBECONFIG, can-i 8/8 yes and 8/8 no, homelab 10b563e8 drops the workload. First CI deploy (run 6266) rolled 265966a fine but failed the pod check: terminating pods in the preStop sleep still report Running. Fix: skip pods with deletionTimestamp |
