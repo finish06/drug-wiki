@@ -38,3 +38,6 @@ flowchart LR
   from cache.
 - **If a source is down,** cached data is still served where possible. Otherwise
   you get `502` ([Errors](../reference/errors.md)).
+
+For the full picture, the three services and how they fit together, see
+**[System → How the system fits together](../system/index.md)**.

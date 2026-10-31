@@ -209,3 +209,56 @@ def test_zensical_ac001_requirements_pin_zensical_only():
     assert "zensical==" in reqs
     for gone in ("mkdocs==", "mkdocs-material", "mkdocs-macros-plugin", "mkdocs-swagger-ui-tag"):
         assert gone not in reqs, f"requirements still pins {gone}"
+
+
+# ---- System section (specs/system-section.md) ----
+SYSTEM_PAGES = ["system/index.md", "system/drug-gate.md", "system/cash-drugs.md", "system/rx-dag.md",
+                "system/data-freshness.md", "system/reliability.md"]
+SERVICE_SECTIONS = ["## What it does", "## How it works", "## Data", "## Interfaces", "## Reliability", "## Source code"]
+REPOS = {"system/drug-gate.md": "github.com/finish06/drug-gate",
+         "system/cash-drugs.md": "github.com/finish06/cash-drugs",
+         "system/rx-dag.md": "github.com/finish06/ndc-loader"}
+
+
+def test_system_ac001_overview_diagram_services_and_walkthrough():
+    text = read("system/index.md")
+    assert "```mermaid" in text
+    for word in ("drug-gate", "cash-drugs", "rx-dag", "DailyMed", "openFDA", "RxNorm"):
+        assert word in text, f"overview does not mention {word}"
+    assert "## A request, step by step" in text
+    for page in ("drug-gate.md", "cash-drugs.md", "rx-dag.md", "data-freshness.md", "reliability.md"):
+        assert page in text
+
+
+@pytest.mark.parametrize("page", ["system/drug-gate.md", "system/cash-drugs.md", "system/rx-dag.md"])
+def test_system_ac002_ac005_service_pages_follow_template_and_link_source(page):
+    text = read(page)
+    positions = [text.find(s) for s in SERVICE_SECTIONS]
+    assert all(p >= 0 for p in positions), f"{page} lacks {[s for s, p in zip(SERVICE_SECTIONS, positions) if p < 0]}"
+    assert positions == sorted(positions), f"{page} sections out of order"
+    assert REPOS[page] in text
+
+
+def test_system_ac003_freshness_covers_each_data_kind():
+    text = read("system/data-freshness.md")
+    for kind in ("Drug names", "Drug classes", "NDC", "Product labels", "RxNorm", "Recalls", "Shortages"):
+        assert kind in text, f"freshness page lacks {kind}"
+
+
+def test_system_ac004_reliability_covers_failure_modes():
+    text = read("system/reliability.md").lower()
+    for item in ("stale", "circuit breaker", "429", "retry", "last good copy", "alert"):
+        assert item in text, f"reliability page lacks {item!r}"
+
+
+def test_system_ac006_nav_and_cross_links():
+    cfg = load_config()
+    tabs = [next(iter(t)) for t in cfg["nav"] if isinstance(t, dict)]
+    assert "System" in tabs
+    assert "system/index.md" in read("index.md")
+    assert "../system/index.md" in read("get-started/concepts.md")
+
+
+def test_system_ac007_no_ports_in_system_pages():
+    for page in SYSTEM_PAGES:
+        assert not re.search(r":\d{4,5}\b", read(page)), f"{page} mentions a port"

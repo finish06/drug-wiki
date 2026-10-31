@@ -96,6 +96,13 @@ nav:
       - Errors and rate limits: reference/errors.md
       - Interactive API (OpenAPI): reference/api.md
       - Glossary: reference/glossary.md
+  - System:
+      - How the system fits together: system/index.md
+      - drug-gate (public API): system/drug-gate.md
+      - cash-drugs (caching proxy): system/cash-drugs.md
+      - rx-dag (NDC database): system/rx-dag.md
+      - Data freshness: system/data-freshness.md
+      - Reliability: system/reliability.md
   - Help:
       - FAQ and troubleshooting: help/faq.md
       - Improve this wiki: help/contributing.md

@@ -51,4 +51,5 @@ live in the **[interactive API](reference/api.md)**.
 
 - Stuck on an error? See [FAQ and troubleshooting](help/faq.md).
 - Unfamiliar term (NDC, RxCUI, SPL)? See the [Glossary](reference/glossary.md).
-- Curious how the data flows? See [How it works](get-started/concepts.md).
+- Curious how the data flows? See [How it works](get-started/concepts.md), then the
+  [System](system/index.md) section for the backend: drug-gate, cash-drugs and rx-dag.
