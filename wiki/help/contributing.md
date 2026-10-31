@@ -1,6 +1,6 @@
 # Improve this wiki
 
-This wiki is plain Markdown in git. Every page has an **edit** (pencil) button
+This wiki is plain Markdown in git, built with [Zensical](https://zensical.org). Every page has an **edit** (pencil) button
 at the top that opens it in the repository.
 
 ## Conventions
@@ -13,7 +13,7 @@ at the top that opens it in the repository.
   Say when an example only shows the schema's shape.
 - **Never paste a real API key** or anything private (internal hostnames, IPs, secrets).
   A test rejects common patterns.
-- **The base URL lives in one place**: `extra.api_base` in `mkdocs.yml`. Write
+- **The base URL lives in one place**: `extra.api_base` in `mkdocs.yml` (Zensical reads it). Write
   `{{ "{{ api_base }}" }}` in pages.
 
 ## When the API changes
@@ -28,6 +28,6 @@ at the top that opens it in the repository.
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
-mkdocs serve        # http://127.0.0.1:8000
-pytest -q           # structure checks + strict build
+zensical serve      # http://127.0.0.1:8000
+pytest -q           # structure checks + strict Zensical build
 ```

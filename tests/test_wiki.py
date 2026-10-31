@@ -111,9 +111,16 @@ def test_ac007_glossary_terms():
         assert f"**{term}" in glossary, f"glossary lacks {term}"
 
 
-# AC-008
-def test_ac008_interactive_reference_embeds_vendored_openapi():
-    assert "<swagger-ui" in read("reference/api.md") and "openapi.json" in read("reference/api.md")
+# AC-008 (wiki-v1) / AC-003 (zensical-migration): Swagger UI from vendored assets
+def test_ac008_interactive_reference_uses_vendored_swagger_ui():
+    api = read("reference/api.md")
+    assert 'id="swagger-ui"' in api and "openapi.json" in api
+    cfg = load_config()
+    for rel in ("assets/swagger-ui/swagger-ui-bundle.js", "assets/javascripts/swagger-init.js"):
+        assert rel in cfg["extra_javascript"], f"extra_javascript lacks {rel}"
+        assert (WIKI / rel).exists(), f"missing {rel}"
+    assert "assets/swagger-ui/swagger-ui.css" in cfg["extra_css"]
+    assert (WIKI / "assets/swagger-ui/LICENSE").exists()
     assert json.loads(OPENAPI.read_text())["host"] == "drug-gate.calebdunn.tech"
 
 
@@ -124,13 +131,16 @@ def test_ac009_config_wiki_practices():
     for feature in ("navigation.tabs", "search.suggest", "content.action.edit", "content.code.copy"):
         assert feature in features
     plugin_names = [p if isinstance(p, str) else next(iter(p)) for p in cfg["plugins"]]
-    for plugin in ("search", "macros", "swagger-ui-tag"):
-        assert plugin in plugin_names
+    assert "macros" in plugin_names
+    # Zensical silently ignores plugins it doesn't support (zensical-migration AC-005).
+    assert "swagger-ui-tag" not in plugin_names
     assert cfg["extra"]["api_base"] == "https://drug-gate.calebdunn.tech"
     assert cfg.get("edit_uri") and cfg.get("repo_url")
     for rel in nav_files(cfg["nav"]):
         assert (WIKI / rel).exists(), f"nav points at missing {rel}"
     for page in WIKI.rglob("*.md"):
+        if "assets" in page.parts:
+            continue
         assert str(page.relative_to(WIKI)) in set(nav_files(cfg["nav"])), f"{page} is not in nav"
 
 
@@ -164,10 +174,38 @@ def test_ac012_faq_covers_common_failures():
         assert item in faq
 
 
-# AC-009: strict build (broken links, missing nav, bad macros fail)
-def test_ac009_strict_build():
+# AC-009 (wiki-v1) / AC-001, AC-002, AC-004 (zensical-migration): strict Zensical build
+@pytest.fixture(scope="module")
+def built_site():
     result = subprocess.run(
-        [sys.executable, "-m", "mkdocs", "build", "--strict", "--site-dir", str(ROOT / "site")],
+        [str(Path(sys.executable).with_name("zensical")), "build", "--strict"],
         cwd=ROOT, capture_output=True, text=True,
     )
-    assert result.returncode == 0, result.stderr[-3000:]
+    assert result.returncode == 0, (result.stdout + result.stderr)[-3000:]
+    return ROOT / "site"
+
+
+def test_ac009_strict_zensical_build_keeps_urls(built_site):
+    for url in ("index.html", "get-started/quickstart/index.html", "guides/interactions/index.html",
+                "reference/api/index.html", "reference/openapi.json", "help/faq/index.html"):
+        assert (built_site / url).exists(), f"{url} missing from the build"
+    quickstart = (built_site / "get-started/quickstart/index.html").read_text()
+    assert "https://drug-gate.calebdunn.tech/v1/drugs/info?name=warfarin" in quickstart
+    assert "{{ api_base }}" not in quickstart
+
+
+def test_zensical_ac004_footer_made_with_zensical(built_site):
+    index = (built_site / "index.html").read_text()
+    assert "Made with" in index and "zensical.org" in index
+
+
+def test_zensical_ac003_api_page_loads_swagger_assets(built_site):
+    api = (built_site / "reference/api/index.html").read_text()
+    assert "swagger-ui-bundle.js" in api and "swagger-init.js" in api and "swagger-ui.css" in api
+
+
+def test_zensical_ac001_requirements_pin_zensical_only():
+    reqs = (ROOT / "requirements.txt").read_text()
+    assert "zensical==" in reqs
+    for gone in ("mkdocs==", "mkdocs-material", "mkdocs-macros-plugin", "mkdocs-swagger-ui-tag"):
+        assert gone not in reqs, f"requirements still pins {gone}"

@@ -43,7 +43,13 @@ plugins:
   - search
   - macros:
       on_undefined: strict
-  - swagger-ui-tag
+
+# Interactive API page: vendored swagger-ui-dist (scripts/vendor-swagger-ui.sh).
+extra_css:
+  - assets/swagger-ui/swagger-ui.css
+extra_javascript:
+  - assets/swagger-ui/swagger-ui-bundle.js
+  - assets/javascripts/swagger-init.js
 
 extra:
   # The one place the API's address lives. Pages use {{ api_base }}.

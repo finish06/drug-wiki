@@ -4,9 +4,10 @@ WORKDIR /src
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-RUN pytest -q && mkdocs build --strict --site-dir /site
+# pytest runs `zensical build --strict` into ./site
+RUN pytest -q
 
 FROM nginxinc/nginx-unprivileged:1.27-alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /site /usr/share/nginx/html
+COPY --from=build /src/site /usr/share/nginx/html
 EXPOSE 8080
