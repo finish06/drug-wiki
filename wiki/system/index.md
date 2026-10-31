@@ -2,21 +2,58 @@
 
 The API you call is the front of three services. Each has one job.
 
-```mermaid
-flowchart LR
-    App([Your app]) -->|"X-API-Key"| DG
-    subgraph Stack["The drug-data stack"]
-        DG["<b>drug-gate</b><br/>public API<br/>keys · limits · shaping"]
-        CD["<b>cash-drugs</b><br/>caching proxy<br/>one copy of every source"]
-        RX["<b>rx-dag</b><br/>NDC database<br/>loaded daily from FDA files"]
-        DG --> CD
-        CD --> RX
-    end
-    CD --> DM[FDA DailyMed<br/>names · classes · labels]
-    CD --> OF[openFDA<br/>labels · recalls · shortages]
-    CD --> NLM[NLM RxNorm<br/>IDs · generics · related]
-    RX --> FDA[(FDA bulk downloads<br/>NDC Directory · Drugs@FDA)]
-```
+<div class="dg-wrap">
+<svg class="dg" viewBox="0 0 960 380" role="img" aria-labelledby="dg-sys-t dg-sys-d" xmlns="http://www.w3.org/2000/svg">
+<title id="dg-sys-t">How the drug-data stack fits together</title>
+<desc id="dg-sys-d">Your app calls drug-gate, the only public service, with an API key. drug-gate calls cash-drugs, an internal caching proxy. cash-drugs fetches from FDA DailyMed, openFDA and NLM RxNorm, and from rx-dag, an internal NDC database that loads FDA bulk downloads nightly.</desc>
+<defs>
+<marker id="dg-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-head" d="M0,0 L10,5 L0,10 z"/></marker>
+<marker id="dg-arrow-key" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-head-key" d="M0,0 L10,5 L0,10 z"/></marker>
+</defs>
+<rect class="dg-zone" x="190" y="34" width="430" height="326" rx="14"/>
+<text class="dg-zone-label" x="206" y="56">The drug-data stack</text>
+<rect class="dg-app" x="20" y="126" width="110" height="48" rx="24"/>
+<text class="dg-title" x="75" y="155" text-anchor="middle">Your app</text>
+<path class="dg-edge dg-edge-key" d="M130,150 H214" marker-end="url(#dg-arrow-key)"/>
+<text class="dg-label" x="174" y="140" text-anchor="middle">X-API-Key</text>
+<rect class="dg-box dg-box-public" x="218" y="104" width="160" height="92" rx="10"/>
+<text class="dg-tag dg-tag-public" x="298" y="124" text-anchor="middle">PUBLIC</text>
+<text class="dg-title" x="298" y="146" text-anchor="middle">drug-gate</text>
+<text class="dg-sub" x="298" y="166" text-anchor="middle">REST API</text>
+<text class="dg-sub" x="298" y="183" text-anchor="middle">keys · limits · shaping</text>
+<path class="dg-edge" d="M378,150 H426" marker-end="url(#dg-arrow)"/>
+<rect class="dg-box" x="430" y="104" width="160" height="92" rx="10"/>
+<text class="dg-tag dg-tag-internal" x="510" y="124" text-anchor="middle">INTERNAL</text>
+<text class="dg-title" x="510" y="146" text-anchor="middle">cash-drugs</text>
+<text class="dg-sub" x="510" y="166" text-anchor="middle">caching proxy</text>
+<text class="dg-sub" x="510" y="183" text-anchor="middle">one copy per source</text>
+<path class="dg-edge" d="M510,196 V254" marker-end="url(#dg-arrow)"/>
+<rect class="dg-box" x="430" y="258" width="160" height="92" rx="10"/>
+<text class="dg-tag dg-tag-internal" x="510" y="278" text-anchor="middle">INTERNAL</text>
+<text class="dg-title" x="510" y="300" text-anchor="middle">rx-dag</text>
+<text class="dg-sub" x="510" y="320" text-anchor="middle">NDC database</text>
+<text class="dg-sub" x="510" y="337" text-anchor="middle">reloaded nightly</text>
+<path class="dg-edge" d="M590,150 H660 M660,70 V230"/>
+<path class="dg-edge" d="M660,70 H716" marker-end="url(#dg-arrow)"/>
+<path class="dg-edge" d="M660,150 H716" marker-end="url(#dg-arrow)"/>
+<path class="dg-edge" d="M660,230 H716" marker-end="url(#dg-arrow)"/>
+<rect class="dg-src" x="720" y="40" width="220" height="60" rx="10"/>
+<text class="dg-title" x="830" y="65" text-anchor="middle">FDA DailyMed</text>
+<text class="dg-sub" x="830" y="85" text-anchor="middle">names · classes · labels</text>
+<rect class="dg-src" x="720" y="120" width="220" height="60" rx="10"/>
+<text class="dg-title" x="830" y="145" text-anchor="middle">openFDA</text>
+<text class="dg-sub" x="830" y="165" text-anchor="middle">labels · recalls · shortages</text>
+<rect class="dg-src" x="720" y="200" width="220" height="60" rx="10"/>
+<text class="dg-title" x="830" y="225" text-anchor="middle">NLM RxNorm</text>
+<text class="dg-sub" x="830" y="245" text-anchor="middle">IDs · generics · related</text>
+<path class="dg-edge" d="M590,304 H716" marker-end="url(#dg-arrow)"/>
+<path class="dg-src" d="M720,286 a110,10 0 0 1 220,0 V326 a110,10 0 0 1 -220,0 Z"/>
+<path class="dg-src" d="M720,286 a110,10 0 0 0 220,0" fill="none"/>
+<text class="dg-title" x="830" y="311" text-anchor="middle">FDA bulk downloads</text>
+<text class="dg-sub" x="830" y="330" text-anchor="middle">NDC Directory · Drugs@FDA</text>
+<text class="dg-label" x="830" y="22" text-anchor="middle">Government sources</text>
+</svg>
+</div>
 
 | Service | Job | Who calls it |
 |---|---|---|

@@ -47,6 +47,7 @@ plugins:
 # Interactive API page: vendored swagger-ui-dist (scripts/vendor-swagger-ui.sh).
 extra_css:
   - assets/swagger-ui/swagger-ui.css
+  - assets/stylesheets/diagrams.css
 extra_javascript:
   - assets/swagger-ui/swagger-ui-bundle.js
   - assets/javascripts/swagger-init.js

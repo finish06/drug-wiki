@@ -1,0 +1,22 @@
+/* Hand-drawn system diagrams (wiki/system/index.md). Colors come from the
+   theme, so they follow light/dark mode. */
+.dg-wrap { overflow-x: auto; margin: 1.5em 0; }
+.dg { display: block; width: 100%; min-width: 640px; height: auto; font-family: inherit; }
+.dg text { fill: var(--md-default-fg-color); }
+.dg .dg-title { font-size: 16.5px; font-weight: 700; }
+.dg .dg-sub { font-size: 13.5px; fill: var(--md-default-fg-color--light); }
+.dg .dg-tag { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; }
+.dg .dg-tag-public { fill: var(--md-accent-fg-color); }
+.dg .dg-tag-internal { fill: var(--md-default-fg-color--light); }
+.dg .dg-label { font-size: 12.5px; fill: var(--md-default-fg-color--light); }
+.dg .dg-zone { fill: var(--md-default-fg-color--lightest); fill-opacity: .35;
+  stroke: var(--md-default-fg-color--lighter); stroke-dasharray: 6 5; }
+.dg .dg-zone-label { font-size: 12px; font-weight: 600; fill: var(--md-default-fg-color--light); }
+.dg .dg-box { fill: var(--md-default-bg-color); stroke: var(--md-default-fg-color--lighter); stroke-width: 1.5; }
+.dg .dg-box-public { stroke: var(--md-accent-fg-color); stroke-width: 2.5; }
+.dg .dg-src { fill: var(--md-code-bg-color); stroke: var(--md-default-fg-color--lighter); stroke-width: 1.5; }
+.dg .dg-app { fill: var(--md-accent-fg-color--transparent); stroke: var(--md-accent-fg-color); stroke-width: 1.5; }
+.dg .dg-edge { fill: none; stroke: var(--md-default-fg-color--light); stroke-width: 1.6; }
+.dg .dg-edge-key { stroke: var(--md-accent-fg-color); stroke-width: 2; }
+.dg .dg-head { fill: var(--md-default-fg-color--light); }
+.dg .dg-head-key { fill: var(--md-accent-fg-color); }

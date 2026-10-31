@@ -222,7 +222,9 @@ REPOS = {"system/drug-gate.md": "github.com/finish06/drug-gate",
 
 def test_system_ac001_overview_diagram_services_and_walkthrough():
     text = read("system/index.md")
-    assert "```mermaid" in text
+    # Hand-drawn, theme-aware SVG (replaced the auto-laid-out Mermaid diagram).
+    assert '<svg class="dg"' in text and 'role="img"' in text and "<title" in text and "<desc" in text
+    assert "\n\n" not in text[text.index("<svg"):text.index("</svg>")], "blank line inside the SVG breaks Markdown"
     for word in ("drug-gate", "cash-drugs", "rx-dag", "DailyMed", "openFDA", "RxNorm"):
         assert word in text, f"overview does not mention {word}"
     assert "## A request, step by step" in text
