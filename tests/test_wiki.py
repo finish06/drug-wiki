@@ -262,3 +262,94 @@ def test_system_ac006_nav_and_cross_links():
 def test_system_ac007_no_ports_in_system_pages():
     for page in SYSTEM_PAGES:
         assert not re.search(r":\d{4,5}\b", read(page)), f"{page} mentions a port"
+
+
+# ---- Pipeline deploy (specs/ci-deploy.md) ----
+K8S = ROOT / "k8s"
+
+
+def k8s_docs(rel):
+    return [d for d in yaml.safe_load_all((K8S / rel).read_text()) if d]
+
+
+def test_deploy_ac001_base_matches_live_behavior():
+    docs = {d["kind"]: d for d in k8s_docs("base/drug-wiki.yaml")}
+    assert set(docs) == {"Deployment", "Service", "PodDisruptionBudget"}
+    dep = docs["Deployment"]["spec"]
+    assert dep["replicas"] == 2
+    pod = dep["template"]["spec"]
+    assert pod["securityContext"]["runAsUser"] == 101 and pod["automountServiceAccountToken"] is False
+    c = pod["containers"][0]
+    assert c["securityContext"]["readOnlyRootFilesystem"] is True
+    assert c["readinessProbe"]["httpGet"]["path"] == "/healthz"
+    assert c["lifecycle"]["preStop"]["exec"]["command"] == ["sleep", "15"]
+    assert {"name": "tmp", "mountPath": "/tmp"} in c["volumeMounts"]
+    assert docs["PodDisruptionBudget"]["spec"]["minAvailable"] == 1
+    overlay = yaml.safe_load((K8S / "overlays/prod/kustomization.yaml").read_text())
+    assert overlay["namespace"] == "drugs"
+    assert overlay["images"][0]["name"] == "dockerhub.calebdunn.tech/finish06/drug-wiki"
+
+
+def test_deploy_ac002_k8s_has_no_private_hosts():
+    for f in K8S.rglob("*.yaml"):
+        text = f.read_text()
+        for pattern in (r"nip\.io", r"\b10\.\d+\.\d+\.\d+", r"192\.168\.", r"svc\.cluster\.local", r"IngressRoute"):
+            if f.name == "deployer-rbac.yaml" and pattern == r"svc\.cluster\.local":
+                continue
+            assert not re.search(pattern, text), f"{f.relative_to(ROOT)} contains /{pattern}/"
+
+
+def deploy_cmd():
+    wf = yaml.safe_load((ROOT / ".gitea/workflows/staging-release.yml").read_text())
+    return wf["jobs"]["staging-release"]["steps"][0]["with"]["deploy-cmd"], wf
+
+
+def test_deploy_ac003_apply_overlay_not_set_image():
+    cmd, wf = deploy_cmd()
+    assert "kustomize edit set image" in cmd
+    assert "kubectl diff" in cmd and "apply -k" in cmd
+    assert "rollout status" in cmd and "--timeout=180s" in cmd
+    assert "set image deploy" not in cmd
+
+
+def test_deploy_ac004_rollback_on_failed_rollout():
+    cmd, _ = deploy_cmd()
+    assert "rollout undo" in cmd
+
+
+def test_deploy_ac009_diff_errors_fail_and_kubectl_matches_server_minor():
+    cmd, _ = deploy_cmd()
+    assert "|| true" not in cmd.split("kubectl diff")[1].splitlines()[0]
+    assert '"$rc" -gt 1' in cmd
+    assert "/release/v1.34." in cmd
+
+
+def test_deploy_ac010_committed_overlay_pin_has_digest():
+    overlay = yaml.safe_load((K8S / "overlays/prod/kustomization.yaml").read_text())
+    assert overlay["images"][0]["digest"].startswith("sha256:")
+
+
+def test_deploy_ac005_smoke_check_and_tag_confirmation():
+    cmd, _ = deploy_cmd()
+    assert "https://wiki.drugs.calebdunn.tech/healthz" in cmd
+    # Operator conditions (2026-10-30): pin by digest; prove every pod runs it.
+    assert "docker-content-digest" in cmd and '@${DIGEST}"' in cmd
+    assert "imageID" in cmd and "$DIGEST" in cmd
+
+
+def test_deploy_ac006_fail_fast_without_secret():
+    cmd, wf = deploy_cmd()
+    assert 'if [ -z "${WIKI_KUBECONFIG:-}" ]' in cmd and "k8s/deployer-rbac.yaml" in cmd
+    env = wf["jobs"]["staging-release"]["steps"][0]["env"]
+    assert env["WIKI_KUBECONFIG"] == "${{ secrets.WIKI_KUBECONFIG }}"
+    assert "'" not in cmd, "ci-shared single-quotes deploy-cmd: no apostrophes"
+
+
+def test_deploy_ac007_rbac_is_scoped():
+    docs = {d["kind"]: d for d in k8s_docs("deployer-rbac.yaml")}
+    assert set(docs) == {"ServiceAccount", "Role", "RoleBinding"}
+    for rule in docs["Role"]["rules"]:
+        assert not {"create", "delete", "deletecollection", "*"} & set(rule["verbs"]), rule
+        if set(rule["resources"]) & {"deployments", "services", "poddisruptionbudgets"} and \
+                {"patch", "update"} & set(rule["verbs"]):
+            assert rule.get("resourceNames") == ["drug-wiki"], rule

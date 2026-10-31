@@ -23,6 +23,13 @@ at the top that opens it in the repository.
    [All endpoints](../reference/endpoints.md).
 3. Add the row (and a guide section if it's a new use case), then open a PR.
 
+## How changes go live
+
+Merging a pull request to `main` publishes the site automatically: the pipeline
+builds a new image, rolls it out, checks the site answers, and rolls back by
+itself if the new version doesn't come up. Changes are usually live a few
+minutes after the merge.
+
 ## Run it locally
 
 ```bash

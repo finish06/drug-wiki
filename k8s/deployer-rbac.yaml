@@ -1,0 +1,72 @@
+# drug-wiki CI deployer: ServiceAccount + Role + RoleBinding (specs/ci-deploy.md AC-007).
+# OUT-OF-BAND: the operator applies this ONCE, as an admin. CI never applies it:
+# it grants the rights CI uses, so it must not ship with the job that uses them.
+#
+# Scope: only the drug-wiki Deployment, Service and PodDisruptionBudget in ns
+# drugs (resourceNames), plus read access to ReplicaSets/Pods for
+# `rollout status`. No create, no delete. `rollout undo` is a PATCH on the
+# Deployment; `kubectl diff` is a server-side dry-run PATCH. Both are covered.
+#
+# PROVISIONING (operator, on Caleb's go):
+#   kubectl apply -f k8s/deployer-rbac.yaml
+#   kubectl -n drugs apply -f - <<YAML
+#   apiVersion: v1
+#   kind: Secret
+#   metadata: { name: drug-wiki-deployer-token, namespace: drugs,
+#               annotations: { kubernetes.io/service-account.name: drug-wiki-deployer } }
+#   type: kubernetes.io/service-account-token
+#   YAML
+#   TOKEN=$(kubectl -n drugs get secret drug-wiki-deployer-token -o jsonpath='{.data.token}' | base64 -d)
+#   APISERVER=<an API server address the CI runners can reach>. Do NOT take it
+#     from `kubectl config view` on a control-plane node: that returns the
+#     node-local https://127.0.0.1:6443, which runners cannot use.
+#   CA=$(kubectl config view --minify --flatten -o jsonpath='{.clusters[0].cluster.certificate-authority-data}')
+#   Write a kubeconfig (cluster server+CA, user token, context namespace drugs) and
+#   store it, raw or base64, as the Code/drug-wiki repo Actions secret WIKI_KUBECONFIG.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: drug-wiki-deployer
+  namespace: drugs
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: drug-wiki-deployer
+  namespace: drugs
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["drug-wiki"]
+    # list/watch by name (fieldSelector metadata.name) is what rollout status does.
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["services"]
+    resourceNames: ["drug-wiki"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    resourceNames: ["drug-wiki"]
+    verbs: ["get", "update", "patch"]
+  # rollout status / rollout undo read the Deployment's history.
+  - apiGroups: ["apps"]
+    resources: ["replicasets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: drug-wiki-deployer
+  namespace: drugs
+subjects:
+  - kind: ServiceAccount
+    name: drug-wiki-deployer
+    namespace: drugs
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: drug-wiki-deployer

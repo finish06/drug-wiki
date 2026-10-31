@@ -8,4 +8,5 @@ Public developer docs for drug-gate (https://wiki.drugs.calebdunn.tech). Follows
 - Guides follow: When to use → Request → Example response → Parameters → Errors → Related.
 - Examples are real responses (captured) unless marked as schema shape.
 - After drug-gate API changes: `scripts/sync-openapi.sh ../drug-gate`, then `pytest -q`.
-- Deploy: CI publishes `dockerhub.calebdunn.tech/finish06/drug-wiki:<sha>`; operator `joe_tmux_1` pins prod by digest on Caleb's go.
+- Deploy: **every merge to `main` deploys to prod** (`.gitea/workflows/staging-release.yml` applies `k8s/overlays/prod` with the new tag, waits for the rollout, rolls back on failure, smoke-tests `/healthz`). Credential: repo secret `WIKI_KUBECONFIG` for SA `drug-wiki-deployer` (`k8s/deployer-rbac.yaml`, applied by the operator only). Rollback: revert the PR. If the pipeline auto-rolled back (or you ran `kubectl -n drugs rollout undo deploy/drug-wiki`), still revert the PR so `main` matches prod.
+- `k8s/` is public (GitHub mirror): never add private hosts/IPs; the LAN Traefik route lives in homelab.

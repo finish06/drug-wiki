@@ -1,7 +1,14 @@
 name: main -> staging release
+# On every merge to main: build and push :<sha> / :<sha>-beta, then DEPLOY TO
+# PROD (wiki.drugs.calebdunn.tech) by applying k8s/overlays/prod with the new
+# tag (specs/ci-deploy.md). There is no staging for drug-wiki; a merged PR is
+# the approval. Rollback: revert the PR, or kubectl rollout undo.
 on:
   push:
     branches: [main]
+  # Manual fallback: Gitea Actions occasionally misses the post-merge push
+  # event. Dispatch this workflow on main to build and deploy by hand.
+  workflow_dispatch: {}
 
 jobs:
   staging-release:
@@ -10,10 +17,68 @@ jobs:
       - uses: http://gitea-http.gitea.svc.cluster.local:3000/Code/ci-shared/staging-release@v3
         with:
           image-name: finish06/drug-wiki
+          # No apostrophes in this block: it is spliced into a shell script.
           deploy-cmd: |
-            # Publishes :<sha>-beta and :<sha>. The operator pins prod
-            # (wiki.drugs.calebdunn.tech) to the digest on Caleb's go.
             echo "Pushed image: ${IMAGE_REF}"
+            if [ -z "${WIKI_KUBECONFIG:-}" ]; then
+              echo "::error::WIKI_KUBECONFIG secret is not set. The image ${IMAGE_REF} is pushed, but prod was NOT deployed."
+              echo "::error::Provision the deployer per k8s/deployer-rbac.yaml, store the kubeconfig as repo secret WIKI_KUBECONFIG, then re-run."
+              exit 1
+            fi
+            if printf "%s" "$WIKI_KUBECONFIG" | grep -q apiVersion; then
+              printf "%s" "$WIKI_KUBECONFIG" > /tmp/kc
+            else
+              printf "%s" "$WIKI_KUBECONFIG" | base64 -d > /tmp/kc
+            fi
+            export KUBECONFIG=/tmp/kc
+            # Pinned tools, checksum-verified (the runner image ships neither).
+            # kubectl tracks the cluster minor (server v1.34): keep within one minor.
+            curl -fsSL -o /tmp/kubectl https://dl.k8s.io/release/v1.34.13/bin/linux/amd64/kubectl
+            echo "b4bb494e9466a7a94bb851414548bc0d3e2f8da90757e6eccc3371e648648591  /tmp/kubectl" | sha256sum -c -
+            curl -fsSL -o /tmp/kustomize.tgz https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v5.4.3/kustomize_v5.4.3_linux_amd64.tar.gz
+            echo "3669470b454d865c8184d6bce78df05e977c9aea31c30df3c669317d43bcc7a7  /tmp/kustomize.tgz" | sha256sum -c -
+            mkdir -p /tmp/bin && mv /tmp/kubectl /tmp/bin/ && tar -xzf /tmp/kustomize.tgz -C /tmp/bin kustomize
+            chmod +x /tmp/bin/kubectl /tmp/bin/kustomize
+            export PATH="/tmp/bin:$PATH"
+            # Resolve the digest of the image this run just pushed: prod pins are tag@digest.
+            REPO_PATH="${IMAGE_REF#*/}"; REPO_PATH="${REPO_PATH%%:*}"
+            DIGEST=$(curl -fsSI -u "${REGISTRY_USERNAME}:${REGISTRY_PASSWORD}" \
+              -H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json" \
+              "https://${REGISTRY}/v2/${REPO_PATH}/manifests/${IMAGE_TAG}" | tr -d "\r" | awk -F": " "tolower(\$1)==\"docker-content-digest\" {print \$2}")
+            case "$DIGEST" in sha256:*) ;; *) echo "::error::Could not resolve the digest of ${IMAGE_REF}"; exit 1 ;; esac
+            echo "Resolved ${IMAGE_REF}@${DIGEST}"
+            # Pin the overlay to that exact image, then apply it.
+            (cd k8s/overlays/prod && kustomize edit set image "dockerhub.calebdunn.tech/finish06/drug-wiki=${IMAGE_REF}@${DIGEST}")
+            echo "=== DIFF ==="
+            # diff exits 1 when there are differences (expected); >1 is an error (RBAC, API).
+            rc=0; kubectl diff -k k8s/overlays/prod || rc=$?
+            if [ "$rc" -gt 1 ]; then echo "::error::kubectl diff failed (exit ${rc})"; exit 1; fi
+            echo "=== APPLY ${IMAGE_TAG} ==="
+            kubectl apply -k k8s/overlays/prod
+            if ! kubectl -n drugs rollout status deploy/drug-wiki --timeout=180s; then
+              echo "::error::Rollout of ${IMAGE_TAG} failed. Rolling back."
+              kubectl -n drugs rollout undo deploy/drug-wiki
+              kubectl -n drugs rollout status deploy/drug-wiki --timeout=180s || true
+              exit 1
+            fi
+            # Every ready pod must run the new digest (/healthz alone was 200 on old pods too).
+            RUNNING=$(kubectl -n drugs get deploy/drug-wiki -o jsonpath="{.spec.template.spec.containers[0].image}")
+            echo "Deployment image: ${RUNNING}"
+            case "$RUNNING" in *"$IMAGE_TAG@$DIGEST") ;; *) echo "::error::Deployment runs ${RUNNING}, expected $IMAGE_TAG@$DIGEST"; exit 1 ;; esac
+            IDS=$(kubectl -n drugs get pods -l app.kubernetes.io/name=drug-wiki --field-selector=status.phase=Running -o jsonpath="{range .items[*]}{.status.containerStatuses[0].imageID}{\"\\n\"}{end}")
+            echo "Pod image IDs:"; echo "$IDS"
+            if [ -z "$IDS" ] || echo "$IDS" | grep -v -q "$DIGEST"; then
+              echo "::error::Not every running pod has ${DIGEST}"; exit 1
+            fi
+            # Smoke: the public site answers (allow the edge a moment to drain old pods).
+            for i in 1 2 3 4 5 6; do
+              code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 https://wiki.drugs.calebdunn.tech/healthz || true)
+              [ "$code" = 200 ] && break
+              sleep 10
+            done
+            [ "$code" = 200 ] || { echo "::error::Smoke check failed: /healthz returned ${code}"; exit 1; }
+            echo "Deployed ${IMAGE_TAG}: https://wiki.drugs.calebdunn.tech is healthy."
         env:
           REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
           REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+          WIKI_KUBECONFIG: ${{ secrets.WIKI_KUBECONFIG }}

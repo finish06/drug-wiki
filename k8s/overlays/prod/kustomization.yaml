@@ -1,0 +1,13 @@
+# Prod overlay, applied by .gitea/workflows/staging-release.yml on every merge
+# to main. CI runs `kustomize edit set image` to pin tag@digest to the image it
+# just built. The committed pin is the image live at hand-over, so a manual
+# `kubectl apply -k` never deploys an unpinned tag.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: drugs
+resources:
+  - ../../base
+images:
+  - name: dockerhub.calebdunn.tech/finish06/drug-wiki
+    newTag: "5493854"
+    digest: sha256:ff0c6aef8ed29266090497fd3bb56123aca8641269bff3f2a24b7784d0f1c968

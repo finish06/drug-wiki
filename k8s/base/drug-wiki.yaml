@@ -1,0 +1,121 @@
+# drug-wiki Deployment, Service and PodDisruptionBudget (specs/ci-deploy.md).
+# Moved from homelab drugs/07-drug-wiki.yaml (2026-10-30), behavior unchanged:
+# nginx-unprivileged uid 101 on 8080, read-only root with /tmp emptyDir (nginx
+# temp paths), probes on /healthz, preStop sleep 15 so the edge drains pooled
+# connections before a pod stops. The LAN-only Traefik route stays in homelab:
+# this repo is mirrored publicly. The image tag is set by k8s/overlays/prod.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: drug-wiki
+  labels:
+    app.kubernetes.io/name: drug-wiki
+    app.kubernetes.io/part-of: drugs
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: drug-wiki
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: drug-wiki
+        app.kubernetes.io/part-of: drugs
+    spec:
+      enableServiceLinks: false
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: drug-wiki
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: drug-wiki
+        image: dockerhub.calebdunn.tech/finish06/drug-wiki
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - sleep
+              - '15'
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          periodSeconds: 10
+          timeoutSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 3
+        resources:
+          requests:
+            cpu: 10m
+            memory: 16Mi
+          limits:
+            memory: 64Mi
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: tmp
+        emptyDir:
+          sizeLimit: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: drug-wiki
+  labels:
+    app.kubernetes.io/name: drug-wiki
+    app.kubernetes.io/part-of: drugs
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: drug-wiki
+  ports:
+  - name: http
+    port: 8080
+    targetPort: http
+    protocol: TCP
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: drug-wiki
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: drug-wiki
