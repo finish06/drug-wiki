@@ -357,3 +357,36 @@ def test_deploy_ac007_rbac_is_scoped():
         if set(rule["resources"]) & {"deployments", "services", "poddisruptionbudgets"} and \
                 {"patch", "update"} & set(rule["verbs"]):
             assert rule.get("resourceNames") == ["drug-wiki"], rule
+
+
+# ---- Branding (specs/branding.md) ----
+IMAGES = WIKI / "assets" / "images"
+
+
+def test_branding_ac001_header_logo(built_site):
+    # The modern theme's header follows the page scheme (light or dark), so the mark is teal, not white.
+    assert load_config()["theme"].get("logo") == "assets/images/icon.svg"
+    svg = (IMAGES / "icon.svg").read_text()
+    assert "<svg" in svg and "<text" not in svg
+    assert set(re.findall(r"#[0-9a-fA-F]{3,6}\b", svg)) == {"#009688"}, "header logo is not brand teal"
+    # Header and mobile nav drawer both carry the logo.
+    page = (built_site / "guides/interactions/index.html").read_text()
+    assert page.count('<img src="../../assets/images/icon.svg" alt="Drug API Wiki">') == 2
+
+
+def test_branding_ac002_favicon(built_site):
+    assert load_config()["theme"].get("favicon") == "assets/images/favicon.png"
+    assert (IMAGES / "favicon.png").read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
+    assert 'rel="icon" href="../../assets/images/favicon.png"' in (built_site / "guides/interactions/index.html").read_text()
+
+
+def test_branding_ac003_home_banner(built_site):
+    svg = (IMAGES / "logo.svg").read_text()
+    assert "<text" not in svg, "wordmark must be paths, not webfont text"
+    index = read("index.md")
+    assert index.index("assets/images/logo.svg") < index.index("# Drug API Wiki")
+    assert "# Drug API Wiki { .md-visually-hidden }" in index
+    built = (built_site / "index.html").read_text()
+    assert 'src="assets/images/logo.svg"' in built
+    h1 = re.search(r"<h1[^>]*>", built).group()
+    assert 'id="drug-api-wiki"' in h1 and 'class="md-visually-hidden"' in h1

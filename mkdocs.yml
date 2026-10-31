@@ -9,6 +9,8 @@ copyright: Data from FDA DailyMed, openFDA and NLM RxNorm. Not medical advice.
 
 theme:
   name: material
+  logo: assets/images/icon.svg
+  favicon: assets/images/favicon.png
   features:
     - navigation.tabs
     - navigation.sections
